@@ -1,0 +1,14 @@
+[alias]
+        s = status
+        l = log
+        d = diff
+        r = remote
+        su = submodule update --init --recursive
+        b = branch
+        c = checkout
+        lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %Cblue<%an>%Creset' --abbrev-commit --date=relative --all
+[user]
+	name = Rajasekharan Vengalil
+	email = rajave@microsoft.com
+[credential]
+	helper = cache --timeout=3600

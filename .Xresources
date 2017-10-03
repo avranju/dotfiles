@@ -1,4 +1,4 @@
-URxvt.font: xft:monospace:size=11
+URxvt.font: xft:DejaVu Sans Mono:antialias=false:pixelsize=14
 URxvt.scrollBar: false
 
 ! special
@@ -37,4 +37,3 @@ URxvt.scrollBar: false
 ! white
 *.color7:       #707880
 *.color15:      #c5c8c6
-

@@ -46,7 +46,10 @@ bindsym $mod+d exec dmenu_run
 # change focus
 bindsym $mod+j focus left
 bindsym $mod+k focus down
-bindsym $mod+l focus up
+# Raj: Commenting out this so we can use this
+#      key combination for locking the PC. $mod+Up is anway
+#      available for the same thing.
+# bindsym $mod+l focus up
 bindsym $mod+semicolon focus right
 
 # alternatively, you can use the cursor keys:
@@ -160,3 +163,7 @@ bar {
 bindsym $mod+Shift+greater move container to output right
 bindsym $mod+Shift+less move container output left
 bindsym $mod+x move workspace to output right
+
+# Lock PC when hitting $mod+l
+bindsym $mod+l exec i3lock -c 000000
+

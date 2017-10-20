@@ -167,3 +167,5 @@ bindsym $mod+x move workspace to output right
 # Lock PC when hitting $mod+l
 bindsym $mod+l exec i3lock -c 000000
 
+# Disable focus follow mouse
+focus_follows_mouse no

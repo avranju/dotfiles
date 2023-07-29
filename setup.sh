@@ -34,7 +34,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
 # install common rust tools
-cargo install bat exa fd-find ripgrep tealdeer xh starship
+cargo install bat exa fd-find ripgrep tealdeer xh starship simple-http-server
 tldr --update
 
 # append starship config to .zshrc

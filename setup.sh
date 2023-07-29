@@ -4,10 +4,11 @@
 sudo apt update && \
     sudo apt upgrade -y && \
     sudo apt install build-essential git \
-         cmake libssl-dev zsh fasd curl wget -y
+         cmake libssl-dev zsh fasd curl \
+         pkg-config wget -y
 
 # install oh-my-zsh
-sudo CHSH=no RUNZSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+CHSH=no RUNZSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
 # install zsh-autosuggestions
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
@@ -42,7 +43,7 @@ tldr --update
 echo 'eval "$(starship init zsh)"' >> ~/.zshrc
 
 # add a bunch of aliases and exports to oh-my-zsh custom script
-cat <<EOF >> ~/.oh-my-zsh/custom/my.zsh
+cat <<'EOF' >> ~/.oh-my-zsh/custom/my.zsh
 # exa aliases
 alias l="exa -lah"
 alias ls="exa"
@@ -85,7 +86,7 @@ export COLORTERM=truecolor
 EOF
 
 # setup .gitconfig
-cat <<EOF >> ~/.gitconfig
+cat <<'EOF' >> ~/.gitconfig
 [alias]
         s = status
         l = log

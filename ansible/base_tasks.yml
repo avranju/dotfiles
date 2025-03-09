@@ -1,0 +1,85 @@
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: safe
+
+- name: Install all needed packages
+  ansible.builtin.apt:
+    update_cache: true
+    pkg:
+      - zsh
+      - git
+      - curl
+      - wget
+      - neofetch
+    state: present
+
+- name: Install Oh My Zsh
+  ansible.builtin.shell:
+    cmd: 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
+  args:
+    creates: '/home/{{ zsh_user }}/.oh-my-zsh'
+  become: true
+  become_user: '{{ zsh_user }}'
+  register: ohmyzsh_result
+  changed_when: ohmyzsh_result.rc == 0
+
+- name: 'Get current shell for {{ zsh_user }}'
+  shell: 'getent passwd {{ zsh_user }} | cut -d: -f7'
+  register: current_shell
+  changed_when: false
+  check_mode: no
+
+- name: 'Change default shell to zsh for {{ zsh_user }}'
+  user:
+    name: '{{ zsh_user }}'
+    shell: /bin/zsh
+  when: current_shell.stdout != "/bin/zsh"
+
+- name: Ensure ohmyzsh plugins directory exists
+  file:
+    path: '{{ ohmyzsh_plugins_path }}'
+    state: directory
+    owner: '{{ zsh_user }}'
+    group: '{{ zsh_user }}'
+    mode: '0755'
+
+- name: Clone zsh-syntax-highlighting
+  git:
+    repo: 'https://github.com/zsh-users/zsh-syntax-highlighting.git'
+    dest: '{{ ohmyzsh_plugins_path }}/zsh-syntax-highlighting'
+    version: master # Or a specific tag/branch if needed
+    update: yes # Pull updates if the plugin already exists
+    force: yes # Overwrite local changes
+  become_user: '{{ zsh_user }}'
+  become: true # Need sudo to write to plugins directory
+
+- name: Clone zsh-autosuggestions
+  git:
+    repo: 'https://github.com/zsh-users/zsh-autosuggestions.git'
+    dest: '{{ ohmyzsh_plugins_path }}/zsh-autosuggestions'
+    version: master # Or a specific tag/branch if needed
+    update: yes # Pull updates if the plugin already exists
+    force: yes # Overwrite local changes
+  become_user: '{{ zsh_user }}'
+  become: true # Need sudo to write to plugins directory
+
+- name: Modify .zshrc to enable plugins
+  lineinfile:
+    path: '/home/{{ zsh_user }}/.zshrc'
+    regexp: "^plugins=\\(.*\\)$"
+    line: 'plugins=(git zsh-syntax-highlighting zsh-autosuggestions)'
+    state: present
+    owner: '{{ zsh_user }}'
+    group: '{{ zsh_user }}'
+    backrefs: yes # Important to preserve any existing plugins in the list
+  become_user: '{{ zsh_user }}'
+  become: true
+
+- name: Restart zsh (or source .zshrc) #This might not be ideal.  Consider just sourcing.
+  shell: source /home/{{ zsh_user }}/.zshrc
+  become_user: '{{ zsh_user }}'
+  become: true
+  changed_when: false # This command doesn't change anything in the Ansible sense
+  args:
+    executable: /bin/zsh

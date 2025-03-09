@@ -1,0 +1,211 @@
+- name: Base environment
+  hosts: prod
+  tags:
+    - prod
+  become: true
+  vars:
+    # Adjust this to the user who owns Oh My Zsh and whose .zshrc needs updating
+    zsh_user: "{{ ansible_user | default('your_user') }}"
+    ohmyzsh_plugins_path: '/home/{{ zsh_user }}/.oh-my-zsh/custom/plugins'
+  tasks:
+    - name: Base tasks
+      include_tasks: base_tasks.yml
+
+- name: Dev environment
+  hosts: dev
+  tags:
+    - dev
+  become: true
+  vars:
+    # Adjust this to the user who owns Oh My Zsh and whose .zshrc needs updating
+    zsh_user: "{{ ansible_user | default('your_user') }}"
+    ohmyzsh_plugins_path: '/home/{{ zsh_user }}/.oh-my-zsh/custom/plugins'
+  tasks:
+    - name: Base tasks
+      include_tasks: base_tasks.yml
+
+    - name: Install build tools
+      ansible.builtin.apt:
+        pkg:
+          - build-essential
+          - cmake
+          - ninja-build
+          - pkg-config
+          - libssl-dev
+        state: present
+      become: true
+
+    - name: Create/Update .gitconfig
+      become: true
+      become_user: '{{ zsh_user }}'
+      copy:
+        dest: '/home/{{ zsh_user }}/.gitconfig'
+        content: |
+          [alias]
+            s = status
+            l = log
+            d = diff
+            r = remote
+            su = submodule update --init --recursive
+            b = branch
+            c = checkout
+            lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %Cblue<%an>%Creset' --abbrev-commit --date=relative --all
+          [user]
+            name = Raj Vengalil
+            email = avranju@nerdworks.dev
+          [init]
+            defaultBranch = main
+
+    - name: Ensure ~/.oh-my-zsh/custom directory exists
+      become: true
+      become_user: '{{ zsh_user }}'
+      file:
+        path: '/home/{{ zsh_user }}/.oh-my-zsh/custom'
+        state: directory
+
+    - name: Create/Update ~/.oh-my-zsh/custom/my.zsh
+      become: true
+      become_user: '{{ zsh_user }}'
+      copy:
+        dest: '/home/{{ zsh_user }}/.oh-my-zsh/custom/my.zsh'
+        content: |
+          # aliases
+          alias l="exa -lah"
+          alias ls="exa"
+          alias cb="cargo build"
+          alias cr="cargo run"
+          alias cf="cargo fmt"
+          alias ct="cargo test"
+          alias k=kubectl
+          alias g=git
+          alias clip="xclip -selection clipboard"
+          alias kx=kubectx
+          alias ks=kubens
+          alias mk="microk8s kubectl"
+          alias dc="docker compose"
+          alias dcps="docker compose ps"
+          alias dce="docker compose exec -it"
+          alias dcu="docker compose up -d"
+          alias dcd="docker compose down"
+          alias dcl="docker compose logs"
+          alias dp="docker ps"
+          alias dpa="docker ps -a"
+          alias de="docker exec -it"
+          alias di="docker images"
+          alias mp=multipass
+
+          # alias for converting hex value to decimal
+          alias h2d="printf \"%d\\n\" "
+
+          # creates a 'wip' commit
+          alias gwip='git commit -a -m "work in progress - fixup"'
+
+          # additional paths
+          export PATH=$PATH:/usr/local/go/bin:/home/{{ zsh_user }}/go/bin:/home/{{ zsh_user }}/.local/bin
+
+          # uses yazi file manager and changes PWD on exit
+          function y() {
+            local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+            yazi "$@" --cwd-file="$tmp"
+            if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+              builtin cd -- "$cwd"
+            fi
+            rm -f -- "$tmp"
+          }
+
+    - name: Check if rust is already installed
+      stat:
+        path: '/home/{{ zsh_user }}/.cargo/bin/rustc'
+      register: rustc_binary
+
+    - name: Install Rust
+      ansible.builtin.shell:
+        cmd: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+      args:
+        creates: '/home/{{ zsh_user }}/.cargo'
+      become: true
+      become_user: '{{ zsh_user }}'
+      register: rust_result
+      when: not rustc_binary.stat.exists
+      changed_when: rust_result.rc == 0
+
+    - name: Add cargo to PATH
+      shell: source /home/{{ zsh_user }}/.cargo/env
+      become: true
+      become_user: '{{ zsh_user }}'
+      changed_when: false
+      args:
+        executable: /bin/zsh
+
+    - name: Check if cargo-binstall is already installed
+      stat:
+        path: '/home/{{ zsh_user }}/.cargo/bin/cargo-binstall'
+      register: cargo_binstall_binary
+
+    - name: Install cargo-binstall
+      ansible.builtin.shell:
+        cmd: '/home/{{ zsh_user }}/.cargo/bin/cargo install cargo-binstall'
+      become: true
+      become_user: '{{ zsh_user }}'
+      register: cargo_binstall_result
+      when: not cargo_binstall_binary.stat.exists
+      changed_when: cargo_binstall_result.rc == 0 and "'Installed package `cargo-binstall'" in cargo_binstall_result.stdout
+
+    - name: Install Rust based tools
+      block:
+        - name: Define tool/binary mapping
+          ansible.builtin.set_fact:
+            tool_binary_map:
+              exa: exa
+              bat: bat
+              ripgrep: rg
+              'fd-find': fd
+              starship: starship
+              tealdeer: tldr
+              xh: xh
+              xsv: xsv
+              zellij: zellij
+              tokei: tokei
+              'numbat-cli': numbat
+              zoxide: zoxide
+
+        - name: Check if tools are installed
+          ansible.builtin.stat:
+            path: '/home/{{ zsh_user }}/.cargo/bin/{{ tool_binary_map[item] }}'
+          register: tool_status
+          loop: '{{ tool_binary_map.keys() | list }}'
+
+        - name: Set fact for missing tools
+          ansible.builtin.set_fact:
+            missing_tools: "{{ tool_status.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
+        - name: Debug - Before install
+          ansible.builtin.debug:
+            var: missing_tools
+
+        - name: Install missing Rust tools
+          ansible.builtin.shell:
+            cmd: '/home/{{ zsh_user }}/.cargo/bin/cargo binstall --no-confirm {{ missing_tools | join(" ") }}'
+          become: true
+          become_user: '{{ zsh_user }}'
+          when: missing_tools | length > 0
+          register: cargo_tools_result
+
+      rescue:
+        - name: Print error message
+          ansible.builtin.debug:
+            msg: "An error occurred during installation. Check the 'cargo_tools_result' variable for details."
+          when: cargo_tools_result is defined and cargo_tools_result.rc != 0
+
+    - name: Ensure Starship and Zoxide initialization in .zshrc
+      become: true
+      become_user: '{{ zsh_user }}'
+      blockinfile:
+        path: '/home/{{ zsh_user }}/.zshrc'
+        block: |
+          # starship shell
+          eval "$(starship init zsh)"
+
+          # zoxide init
+          eval "$(zoxide init zsh)"
+        marker: '# {mark} ANSIBLE MANAGED STARSHIP AND ZOXIDE'

@@ -70,8 +70,8 @@
         dest: '/home/{{ zsh_user }}/.oh-my-zsh/custom/my.zsh'
         content: |
           # aliases
-          alias l="exa -lah"
-          alias ls="exa"
+          alias l="eza -lah"
+          alias ls="eza"
           alias cb="cargo build"
           alias cr="cargo run"
           alias cf="cargo fmt"
@@ -156,14 +156,14 @@
         - name: Define tool/binary mapping
           ansible.builtin.set_fact:
             tool_binary_map:
-              exa: exa
+              eza: eza
               bat: bat
               ripgrep: rg
               'fd-find': fd
               starship: starship
               tealdeer: tldr
               xh: xh
-              xsv: xsv
+              xan: xan
               zellij: zellij
               tokei: tokei
               'numbat-cli': numbat

@@ -18,7 +18,7 @@
   ansible.builtin.shell:
     cmd: 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
   args:
-    creates: '/home/{{ zsh_user }}/.oh-my-zsh'
+    creates: '{{ zsh_home }}/.oh-my-zsh'
   become: true
   become_user: '{{ zsh_user }}'
   register: ohmyzsh_result
@@ -66,7 +66,7 @@
 
 - name: Modify .zshrc to enable plugins
   lineinfile:
-    path: '/home/{{ zsh_user }}/.zshrc'
+    path: '{{ zsh_home }}/.zshrc'
     regexp: "^plugins=\\(.*\\)$"
     line: 'plugins=(git zsh-syntax-highlighting zsh-autosuggestions)'
     state: present
@@ -77,7 +77,7 @@
   become: true
 
 - name: Restart zsh (or source .zshrc) #This might not be ideal.  Consider just sourcing.
-  shell: source /home/{{ zsh_user }}/.zshrc
+  shell: source {{ zsh_home }}/.zshrc
   become_user: '{{ zsh_user }}'
   become: true
   changed_when: false # This command doesn't change anything in the Ansible sense

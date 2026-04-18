@@ -6,7 +6,16 @@
   vars:
     # Adjust this to the user who owns Oh My Zsh and whose .zshrc needs updating
     zsh_user: "{{ ansible_user | default('your_user') }}"
-    ohmyzsh_plugins_path: '/home/{{ zsh_user }}/.oh-my-zsh/custom/plugins'
+  pre_tasks:
+    - name: Look up passwd entry for {{ zsh_user }}
+      ansible.builtin.getent:
+        database: passwd
+        key: '{{ zsh_user }}'
+
+    - name: Derive home-dependent paths for {{ zsh_user }}
+      ansible.builtin.set_fact:
+        zsh_home: '{{ ansible_facts.getent_passwd[zsh_user][4] }}'
+        ohmyzsh_plugins_path: '{{ ansible_facts.getent_passwd[zsh_user][4] }}/.oh-my-zsh/custom/plugins'
   tasks:
     - name: Base tasks
       include_tasks: base_tasks.yml
@@ -19,7 +28,16 @@
   vars:
     # Adjust this to the user who owns Oh My Zsh and whose .zshrc needs updating
     zsh_user: "{{ ansible_user | default('your_user') }}"
-    ohmyzsh_plugins_path: '/home/{{ zsh_user }}/.oh-my-zsh/custom/plugins'
+  pre_tasks:
+    - name: Look up passwd entry for {{ zsh_user }}
+      ansible.builtin.getent:
+        database: passwd
+        key: '{{ zsh_user }}'
+
+    - name: Derive home-dependent paths for {{ zsh_user }}
+      ansible.builtin.set_fact:
+        zsh_home: '{{ ansible_facts.getent_passwd[zsh_user][4] }}'
+        ohmyzsh_plugins_path: '{{ ansible_facts.getent_passwd[zsh_user][4] }}/.oh-my-zsh/custom/plugins'
   tasks:
     - name: Base tasks
       include_tasks: base_tasks.yml
@@ -39,7 +57,7 @@
       become: true
       become_user: '{{ zsh_user }}'
       copy:
-        dest: '/home/{{ zsh_user }}/.gitconfig'
+        dest: '{{ zsh_home }}/.gitconfig'
         content: |
           [alias]
             s = status
@@ -60,14 +78,14 @@
       become: true
       become_user: '{{ zsh_user }}'
       file:
-        path: '/home/{{ zsh_user }}/.oh-my-zsh/custom'
+        path: '{{ zsh_home }}/.oh-my-zsh/custom'
         state: directory
 
     - name: Create/Update ~/.oh-my-zsh/custom/my.zsh
       become: true
       become_user: '{{ zsh_user }}'
       copy:
-        dest: '/home/{{ zsh_user }}/.oh-my-zsh/custom/my.zsh'
+        dest: '{{ zsh_home }}/.oh-my-zsh/custom/my.zsh'
         content: |
           # aliases
           alias l="eza -lah"
@@ -101,7 +119,7 @@
           alias gwip='git commit -a -m "work in progress - fixup"'
 
           # additional paths
-          export PATH=$PATH:/usr/local/go/bin:/home/{{ zsh_user }}/go/bin:/home/{{ zsh_user }}/.local/bin
+          export PATH=$PATH:/usr/local/go/bin:{{ zsh_home }}/go/bin:{{ zsh_home }}/.local/bin
 
           # uses yazi file manager and changes PWD on exit
           function y() {
@@ -115,14 +133,14 @@
 
     - name: Check if rust is already installed
       stat:
-        path: '/home/{{ zsh_user }}/.cargo/bin/rustc'
+        path: '{{ zsh_home }}/.cargo/bin/rustc'
       register: rustc_binary
 
     - name: Install Rust
       ansible.builtin.shell:
         cmd: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
       args:
-        creates: '/home/{{ zsh_user }}/.cargo'
+        creates: '{{ zsh_home }}/.cargo'
       become: true
       become_user: '{{ zsh_user }}'
       register: rust_result
@@ -130,7 +148,7 @@
       changed_when: rust_result.rc == 0
 
     - name: Add cargo to PATH
-      shell: source /home/{{ zsh_user }}/.cargo/env
+      shell: source {{ zsh_home }}/.cargo/env
       become: true
       become_user: '{{ zsh_user }}'
       changed_when: false
@@ -139,12 +157,12 @@
 
     - name: Check if cargo-binstall is already installed
       stat:
-        path: '/home/{{ zsh_user }}/.cargo/bin/cargo-binstall'
+        path: '{{ zsh_home }}/.cargo/bin/cargo-binstall'
       register: cargo_binstall_binary
 
     - name: Install cargo-binstall
       ansible.builtin.shell:
-        cmd: '/home/{{ zsh_user }}/.cargo/bin/cargo install cargo-binstall'
+        cmd: '{{ zsh_home }}/.cargo/bin/cargo install cargo-binstall'
       become: true
       become_user: '{{ zsh_user }}'
       register: cargo_binstall_result
@@ -171,7 +189,7 @@
 
         - name: Check if tools are installed
           ansible.builtin.stat:
-            path: '/home/{{ zsh_user }}/.cargo/bin/{{ tool_binary_map[item] }}'
+            path: '{{ zsh_home }}/.cargo/bin/{{ tool_binary_map[item] }}'
           register: tool_status
           loop: '{{ tool_binary_map.keys() | list }}'
 
@@ -185,7 +203,7 @@
 
         - name: Install missing Rust tools
           ansible.builtin.shell:
-            cmd: '/home/{{ zsh_user }}/.cargo/bin/cargo binstall --no-confirm {{ missing_tools | join(" ") }}'
+            cmd: '{{ zsh_home }}/.cargo/bin/cargo binstall --no-confirm {{ missing_tools | join(" ") }}'
           become: true
           become_user: '{{ zsh_user }}'
           when: missing_tools | length > 0
@@ -201,7 +219,7 @@
       become: true
       become_user: '{{ zsh_user }}'
       blockinfile:
-        path: '/home/{{ zsh_user }}/.zshrc'
+        path: '{{ zsh_home }}/.zshrc'
         block: |
           # starship shell
           eval "$(starship init zsh)"

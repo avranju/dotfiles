@@ -11,7 +11,7 @@
       - git
       - curl
       - wget
-      - neofetch
+      - fastfetch
     state: present
 
 - name: Install Oh My Zsh
